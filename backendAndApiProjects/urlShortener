@@ -1,0 +1,70 @@
+require('dotenv').config();
+const express = require('express');
+const cors = require('cors');
+const app = express();
+
+// Basic Configuration
+const port = process.env.PORT || 3000;
+
+var shortUrlIndex = 0;
+var savedURLs = [];
+
+app.use(cors());
+app.use(express.json()); 
+app.use(express.urlencoded()); // to support URL-encoded bodies
+app.use('/public', express.static(`${process.cwd()}/public`));
+
+app.get('/', function(req, res) {
+  res.sendFile(process.cwd() + '/views/index.html');
+});
+
+// Your first API endpoint
+app.get('/api/hello', function(req, res) {
+  res.json({ greeting: 'hello API' });
+});
+
+app.post('/api/shorturl', function(req, res) {
+  let receivedURL = req.body.url;
+  console.log("URL:", receivedURL);
+  let urlObj = null;
+  try {
+    urlObj = new URL(receivedURL);
+    if (urlObj.protocol !== "http:" && urlObj.protocol !== "https:"){
+      throw('invalid url');
+    }
+    // let shortURL = `${urlObj.hostname}${urlObj.pathname}`
+    let shortURL = shortUrlIndex;
+    savedURLs.push(receivedURL);
+    shortUrlIndex += 1;
+    res.json({ 
+      original_url : receivedURL, 
+      short_url : shortURL
+    });
+  } catch (error) {
+    res.json({ error: 'invalid url' });
+  }
+});
+
+// www.freecodecamp.org/learn/back-end-development-and-apis/back-end-development-and-apis-projects/url-shortener-microservice
+app.get('/api/shorturl/:short_url(*)', function(req, res) {
+  let shortUrl = req.params.short_url;
+  console.log("Received short URL:", shortUrl);
+  // let fullUrl = `https://${shortUrl}`;
+
+  if (!isNaN(Number(shortUrl))){
+    let fullUrl = savedURLs[Number(shortUrl)];
+    console.log("Retreived full URL:", fullUrl)
+    if (fullUrl){
+      res.redirect(fullUrl);
+      res.end();
+    }
+    else
+      res.json({ error: 'invalid url' });
+  }
+  else
+    res.json({ error: 'invalid url' });
+});
+
+app.listen(port, function() {
+  console.log(`Listening on port ${port}`);
+});
